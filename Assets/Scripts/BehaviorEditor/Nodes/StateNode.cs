@@ -8,7 +8,9 @@ namespace BehaviorEditor
 {
     public class StateNode : BaseNode
     {
-        private bool collapse;
+        public bool collapse;
+        // 方便对比之前是否折叠的状态，Graph 需要保存 StateNode 的折叠状态
+        private bool previousCollapse;
         public State currentState;
         private State previousState;
         public List<BaseNode> dependencies = new List<BaseNode>();
@@ -39,15 +41,22 @@ namespace BehaviorEditor
             }
 
             currentState = (State) EditorGUILayout.ObjectField(currentState, typeof(State), false);
+
+            if (previousCollapse != collapse)
+            {
+                previousCollapse = collapse;
+                BehaviorEditor.currentGraph.SetStateNode(this);
+            }
+
             if (previousState != currentState)
             {
                 serializedState = null;
 
                 previousState = currentState;
-                ClearReferences();
+                BehaviorEditor.currentGraph.SetStateNode(this);
                 for (int i = 0; i < currentState.transitions.Count; i++)
                 {
-                    dependencies.Add(BehaviorEditor.AddTransitionNode(i, currentState.transitions[i], this));
+//                    dependencies.Add(BehaviorEditor.AddTransitionNode(i, currentState.transitions[i], this));
                 }
             }
 
@@ -70,9 +79,13 @@ namespace BehaviorEditor
                     HandleReordableList(onStateList, "On State");
                     HandleReordableList(onEnterList, "On Enter");
                     HandleReordableList(onExitList, "On Exit");
+
                     EditorGUILayout.LabelField("");
                     onStateList.DoLayoutList();
-
+                    EditorGUILayout.LabelField("");
+                    onEnterList.DoLayoutList();
+                    EditorGUILayout.LabelField("");
+                    onExitList.DoLayoutList();
 
                     serializedState.ApplyModifiedProperties();
 

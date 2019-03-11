@@ -17,6 +17,24 @@ namespace Behavior
             stateDicts.Clear();
         }
 
+        public void SetNode(BaseNode node)
+        {
+            if (node is StateNode)
+            {
+                SetStateNode((StateNode)node);
+            }
+
+            if (node is TransitionNode)
+            {
+                
+            }
+
+            if (node is CommentNode)
+            {
+                
+            }
+        }
+
         #region State Nodes
 
         public void SetStateNode(StateNode node)
@@ -31,6 +49,7 @@ namespace Behavior
 
             s.state = node.currentState;
             s.position = new Vector2(node.windowRect.x, node.windowRect.y);
+            s.isCollapsed = node.collapse;
         }
 
         public void ClearStateNode(StateNode node)
@@ -65,6 +84,7 @@ namespace Behavior
     {
         public State state;
         public Vector2 position;
+        public bool isCollapsed;
     }
 
     [System.Serializable]

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Behavior;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ namespace BehaviorEditor
         private bool makeTransition;
         private bool clickedOnWindow;
         private BaseNode selectedNode;
+        public static BehaviorGraph currentGraph;
+        private static GraphNode GraphNode;
 
         enum UserActions
         {
@@ -34,6 +37,20 @@ namespace BehaviorEditor
             editor.minSize = new Vector2(800, 600);
         }
 
+        private void OnEnable()
+        {
+            if (GraphNode == null)
+            {
+                GraphNode = CreateInstance<GraphNode>();
+                GraphNode.windowRect = new Rect(10, position.height * .7f, 200, 100);
+                GraphNode.windowTitle = "Graph";
+            }
+
+            Windows.Clear();
+            Windows.Add(GraphNode);
+            LoadGraph();
+        }
+
         #endregion
 
         #region GUI Methods
@@ -44,10 +61,6 @@ namespace BehaviorEditor
             mousePosition = e.mousePosition;
             UserInput(e);
             DrawWindows();
-        }
-
-        private void OnEnable()
-        {
         }
 
         void DrawWindows()
@@ -87,6 +100,23 @@ namespace BehaviorEditor
                 if (e.type == EventType.MouseDown)
                 {
                 }
+
+                if (e.type == EventType.MouseDrag)
+                {
+                    for (int i = 0; i < Windows.Count; i++)
+                    {
+                        // 找到鼠标所在的窗体
+                        if (Windows[i].windowRect.Contains(mousePosition))
+                        {
+                            if (currentGraph != null)
+                            {
+                                currentGraph.SetNode(Windows[i]);
+                            }
+
+                            break;
+                        }
+                    }
+                }
             }
         }
 
@@ -96,7 +126,7 @@ namespace BehaviorEditor
             clickedOnWindow = false;
             for (int i = 0; i < Windows.Count; i++)
             {
-                // 鼠标在里面
+                // 找到鼠标所在的窗体
                 if (Windows[i].windowRect.Contains(mousePosition))
                 {
                     clickedOnWindow = true;
@@ -119,8 +149,17 @@ namespace BehaviorEditor
         {
             GenericMenu menu = new GenericMenu();
             menu.AddSeparator("");
-            menu.AddItem(new GUIContent("Add State"), false, ContextCallback, UserActions.AddState);
-            menu.AddItem(new GUIContent("Add Comment"), false, ContextCallback, UserActions.CommentNode);
+            if (currentGraph != null)
+            {
+                menu.AddItem(new GUIContent("Add State"), false, ContextCallback, UserActions.AddState);
+                menu.AddItem(new GUIContent("Add Comment"), false, ContextCallback, UserActions.CommentNode);
+            }
+            else
+            {
+                menu.AddDisabledItem(new GUIContent("Add State"));
+                menu.AddDisabledItem(new GUIContent("Add Comment"));
+            }
+
             menu.ShowAsContext();
             e.Use();
         }
@@ -169,11 +208,7 @@ namespace BehaviorEditor
             switch (a)
             {
                 case UserActions.AddState:
-                    StateNode stateNode = CreateInstance<StateNode>();
-                    stateNode.windowRect = new Rect(mousePosition.x, mousePosition.y, 200, 300);
-                    stateNode.windowTitle = "State";
-                    Windows.Add(stateNode);
-
+                    AddStateNode(mousePosition);
                     break;
 
                 case UserActions.AddTransitionNode:
@@ -187,10 +222,7 @@ namespace BehaviorEditor
                     break;
 
                 case UserActions.CommentNode:
-                    CommentNode commentNode = CreateInstance<CommentNode>();
-                    commentNode.windowRect = new Rect(mousePosition.x, mousePosition.y, 200, 100);
-                    commentNode.windowTitle = "Comment";
-                    Windows.Add(commentNode);
+                    AddCommentNode(mousePosition);
                     break;
 
                 case UserActions.DeleteNode:
@@ -224,6 +256,27 @@ namespace BehaviorEditor
 
         #region Helper Methods
 
+        public static StateNode AddStateNode(Vector2 pos)
+        {
+            StateNode stateNode = CreateInstance<StateNode>();
+            stateNode.windowRect = new Rect(pos.x, pos.y, 200, 300);
+            stateNode.windowTitle = "State";
+            Windows.Add(stateNode);
+            currentGraph.SetStateNode(stateNode);
+            return stateNode;
+        }
+
+        public static CommentNode AddCommentNode(Vector2 pos)
+        {
+            CommentNode commentNode = CreateInstance<CommentNode>();
+            commentNode.windowRect = new Rect(pos.x, pos.y, 200, 100);
+            commentNode.windowTitle = "Comment";
+            Windows.Add(commentNode);
+            return commentNode;
+        }
+
+
+        // 通过索引来计算 TransitionNode 的位置
         public static TransitionNode AddTransitionNode(int index, Transition transition, StateNode from)
         {
             Rect fromRect = from.windowRect;
@@ -235,9 +288,18 @@ namespace BehaviorEditor
             }
 
             fromRect.y = targetY;
+            fromRect.x += 200 + 100;
+            fromRect.y += fromRect.height * .7f;
+            Vector2 position = new Vector2(fromRect.x, fromRect.y);
+            return AddTransitionNode(position, transition, from);
+        }
+
+        // 为了保存上一次 TransitionNode 的位置，重载了函数
+        public static TransitionNode AddTransitionNode(Vector2 pos, Transition transition, StateNode from)
+        {
             TransitionNode transitionNode = CreateInstance<TransitionNode>();
             transitionNode.Init(from, transition);
-            transitionNode.windowRect = new Rect(fromRect.x + 200 + 100, fromRect.y + fromRect.height * .7f, 200, 80);
+            transitionNode.windowRect = new Rect(pos.x, pos.y, 200, 80);
             transitionNode.windowTitle = "Condition Check";
             Windows.Add(transitionNode);
             from.dependencies.Add(transitionNode);
@@ -273,6 +335,29 @@ namespace BehaviorEditor
             {
                 if (Windows.Contains(list[i]))
                     Windows.Remove(list[i]);
+            }
+        }
+
+        public static void LoadGraph()
+        {
+            Windows.Clear();
+            Windows.Add(GraphNode);
+
+            if (currentGraph == null)
+                return;
+
+            currentGraph.Init();
+            List<Saved_StateNode> savedStateNodes = new List<Saved_StateNode>();
+            savedStateNodes.AddRange(currentGraph.savedStateNodes);
+            currentGraph.savedStateNodes.Clear();
+            for (int i = savedStateNodes.Count - 1; i >= 0; i--)
+            {
+                StateNode s = AddStateNode(savedStateNodes[i].position);
+                s.currentState = savedStateNodes[i].state;
+                s.collapse = savedStateNodes[i].isCollapsed;
+                currentGraph.SetStateNode(s);
+
+                // Loading transition
             }
         }
 
