@@ -7,88 +7,16 @@ namespace Behavior
     [CreateAssetMenu]
     public class BehaviorGraph : ScriptableObject
     {
-        public List<Saved_StateNode> savedStateNodes = new List<Saved_StateNode>();
-        Dictionary<StateNode, Saved_StateNode> stateNodesDict = new Dictionary<StateNode, Saved_StateNode>();
-        Dictionary<State, StateNode> stateDicts = new Dictionary<State, StateNode>();
+        
+        public List<BaseNode> windows = new List<BaseNode>();
+        #region Checkers
 
-        public void Init()
+        // 编辑器中是否有重复的 stateNode 出现
+        public bool IsStateNodeDuplicate(StateNode node)
         {
-            stateNodesDict.Clear();
-            stateDicts.Clear();
-        }
-
-        public void SetNode(BaseNode node)
-        {
-            if (node is StateNode)
-            {
-                SetStateNode((StateNode)node);
-            }
-
-            if (node is TransitionNode)
-            {
-                
-            }
-
-            if (node is CommentNode)
-            {
-                
-            }
-        }
-
-        #region State Nodes
-
-        public void SetStateNode(StateNode node)
-        {
-            Saved_StateNode s = GetSavedState(node);
-            if (s == null)
-            {
-                s = new Saved_StateNode();
-                savedStateNodes.Add(s);
-                stateNodesDict.Add(node, s);
-            }
-
-            s.state = node.currentState;
-            s.position = new Vector2(node.windowRect.x, node.windowRect.y);
-            s.isCollapsed = node.collapse;
-        }
-
-        public void ClearStateNode(StateNode node)
-        {
-            Saved_StateNode s = GetSavedState(node);
-            if (s != null)
-            {
-                savedStateNodes.Remove(s);
-                stateNodesDict.Remove(node);
-            }
-        }
-
-        Saved_StateNode GetSavedState(StateNode node)
-        {
-            Saved_StateNode r;
-            stateNodesDict.TryGetValue(node, out r);
-            return r;
-        }
-
-        StateNode GetStateNode(State state)
-        {
-            StateNode r;
-            stateDicts.TryGetValue(state, out r);
-            return r;
+            return false;
         }
 
         #endregion
-    }
-
-    [System.Serializable]
-    public class Saved_StateNode
-    {
-        public State state;
-        public Vector2 position;
-        public bool isCollapsed;
-    }
-
-    [System.Serializable]
-    public class Saved_Transition
-    {
     }
 }

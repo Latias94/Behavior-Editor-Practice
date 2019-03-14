@@ -6,92 +6,95 @@ using State = Behavior.State;
 
 namespace BehaviorEditor
 {
-    public class StateNode : BaseNode
+    [CreateAssetMenu(menuName = "Editor/Nodes/State Node")]
+    public class StateNode : DrawNode
     {
-        public bool collapse;
-        // 方便对比之前是否折叠的状态，Graph 需要保存 StateNode 的折叠状态
-        private bool previousCollapse;
-        public State currentState;
-        private State previousState;
-        public List<BaseNode> dependencies = new List<BaseNode>();
 
-        private SerializedObject serializedState;
-        private ReorderableList onStateList;
-        private ReorderableList onEnterList;
-        private ReorderableList onExitList;
-
-        public override void DrawWindow()
+        public override void DrawWindow(BaseNode b)
         {
-            if (currentState == null)
+            if (b.currentState == null)
             {
                 EditorGUILayout.LabelField("Add state to modify:");
             }
             else
             {
-                if (!collapse)
+                if (!b.collapse)
                 {
 //                    windowRect.height = 300;
                 }
                 else
                 {
-                    windowRect.height = 100;
+                    b.windowRect.height = 100;
                 }
 
-                collapse = EditorGUILayout.Toggle("Collapse", collapse);
+                b.collapse = EditorGUILayout.Toggle("Collapse", b.collapse);
             }
 
-            currentState = (State) EditorGUILayout.ObjectField(currentState, typeof(State), false);
+            b.currentState = (State) EditorGUILayout.ObjectField(b.currentState, typeof(State), false);
 
-            if (previousCollapse != collapse)
+            if (b.previousCollapse != b.collapse)
             {
-                previousCollapse = collapse;
-                BehaviorEditor.currentGraph.SetStateNode(this);
+                b.previousCollapse = b.collapse;
+//                BehaviorEditor.currentGraph.SetNode(this);
             }
 
-            if (previousState != currentState)
+            // 如果改变了 stateNode 中的 state
+            if (b.previousState != b.currentState)
             {
-                serializedState = null;
+                b.serializedState = null;
 
-                previousState = currentState;
-                BehaviorEditor.currentGraph.SetStateNode(this);
-                for (int i = 0; i < currentState.transitions.Count; i++)
+
+                b.isDuplicate = BehaviorEditor.currentGraph.IsStateNodeDuplicate(this);
+                if (!b.isDuplicate)
                 {
+//                    BehaviorEditor.currentGraph.SetNode(this);
+                    b.previousState = b.currentState;
+                    for (int i = 0; i < b.currentState.transitions.Count; i++)
+                    {
 //                    dependencies.Add(BehaviorEditor.AddTransitionNode(i, currentState.transitions[i], this));
+                    }
                 }
             }
 
-            if (currentState != null)
+            if (b.isDuplicate)
             {
-                if (serializedState == null)
+                EditorGUILayout.LabelField("State is a duplicate!");
+                b.windowRect.height = 100;
+                return;
+            }
+
+            if (b.currentState != null)
+            {
+                if (b.serializedState == null)
                 {
-                    serializedState = new SerializedObject(currentState);
-                    onStateList = new ReorderableList(serializedState, serializedState.FindProperty("onState")
+                    b.serializedState = new SerializedObject(b.currentState);
+                    b.onStateList = new ReorderableList(b.serializedState, b.serializedState.FindProperty("onState")
                         , true, true, true, true);
-                    onEnterList = new ReorderableList(serializedState, serializedState.FindProperty("onEnter")
+                    b.onEnterList = new ReorderableList(b.serializedState, b.serializedState.FindProperty("onEnter")
                         , true, true, true, true);
-                    onExitList = new ReorderableList(serializedState, serializedState.FindProperty("onExit")
+                    b.onExitList = new ReorderableList(b.serializedState, b.serializedState.FindProperty("onExit")
                         , true, true, true, true);
                 }
 
-                if (!collapse)
+                if (!b.collapse)
                 {
-                    serializedState.Update();
-                    HandleReordableList(onStateList, "On State");
-                    HandleReordableList(onEnterList, "On Enter");
-                    HandleReordableList(onExitList, "On Exit");
+                    b.serializedState.Update();
+                    HandleReordableList(b.onStateList, "On State");
+                    HandleReordableList(b.onEnterList, "On Enter");
+                    HandleReordableList(b.onExitList, "On Exit");
 
                     EditorGUILayout.LabelField("");
-                    onStateList.DoLayoutList();
+                    b.onStateList.DoLayoutList();
                     EditorGUILayout.LabelField("");
-                    onEnterList.DoLayoutList();
+                    b.onEnterList.DoLayoutList();
                     EditorGUILayout.LabelField("");
-                    onExitList.DoLayoutList();
+                    b.onExitList.DoLayoutList();
 
-                    serializedState.ApplyModifiedProperties();
+                    b.serializedState.ApplyModifiedProperties();
 
                     float standard = 300;
-                    standard += onStateList.count * 20;
-                    windowRect.height = standard;
+                    standard += b.onStateList.count * 20;
+                    b.windowRect.height = standard;
                 }
             }
         }
@@ -107,20 +110,19 @@ namespace BehaviorEditor
             };
         }
 
-        public override void DrawCurve()
+        public override void DrawCurve(BaseNode b)
         {
-            base.DrawCurve();
         }
 
         public Transition AddTransition()
         {
-            return currentState.AddTransition();
+            return null; //currentState.AddTransition();
         }
 
         public void ClearReferences()
         {
-            BehaviorEditor.ClearWindowsFromList(dependencies);
-            dependencies.Clear();
+//            BehaviorEditor.ClearWindowsFromList(dependencies);
+//            dependencies.Clear();
         }
     }
 }
